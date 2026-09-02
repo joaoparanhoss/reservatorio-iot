@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reservatorio</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 0; padding: 24px; background: #f5f5f4; color: #1c1c1a;
+    text-align: center; display: flex; justify-content: center;
+  }
+  .app { width: 100%; max-width: 380px; }
+  h1 { font-size: 14px; letter-spacing: .09em; text-transform: uppercase;
+       color: #77756f; font-weight: 500; margin: 0 0 4px 0; }
+  #conn { font-size: 12px; color: #a3a19a; margin-bottom: 18px; }
+  #conn.ok { color: #2e7d4f; }
+  #conn.erro { color: #c0392b; }
+  #pct { font-size: 68px; font-weight: 600; margin: 6px 0; line-height: 1; }
+  #barra { height: 22px; background: #e2e1dd; border-radius: 11px;
+           overflow: hidden; margin: 16px 0 8px 0; }
+  #fill { height: 100%; width: 0; background: #378add;
+          transition: width .4s ease, background .4s ease; }
+  #aviso { color: #c0392b; font-weight: 600; height: 20px; font-size: 14px; }
+  .linha { font-size: 15px; color: #4a4842; margin: 4px 0; }
+  .bloco { background: #fff; border-radius: 12px; padding: 18px 20px;
+           margin-top: 18px; text-align: left; }
+  .bloco .linha { display: flex; justify-content: space-between; }
+  .bloco .linha b { font-weight: 600; }
+  button { width: 100%; padding: 16px; font-size: 17px; font-weight: 600;
+           border: 0; border-radius: 10px; background: #1c1c1a; color: #fff;
+           margin-top: 18px; cursor: pointer; letter-spacing: .04em; }
+  button:disabled { background: #c9c7c1; cursor: default; }
+  #rodape { font-size: 13px; color: #a3a19a; margin-top: 16px; }
+  #log { font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+         color: #8a8880; text-align: left; margin-top: 22px; white-space: pre-wrap;
+         max-height: 130px; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Nivel do reservatorio</h1>
+  <div id="conn">conectando ao broker...</div>
+
+  <div id="pct">--</div>
+  <div id="barra"><div id="fill"></div></div>
+  <div id="aviso"></div>
+
+  <div class="bloco">
+    <div class="linha"><span>Distancia</span><b id="d">--</b></div>
+    <div class="linha"><span>Temperatura</span><b id="t">--</b></div>
+    <div class="linha"><span>Bomba</span><b id="b">--</b></div>
+    <div class="linha"><span>Alerta</span><b id="a">--</b></div>
+    <div class="linha"><span>Dispositivo</span><b id="st">--</b></div>
+  </div>
+
+  <button id="btn" disabled>AGUARDANDO</button>
+  <div id="rodape">Atualizado ha <span id="s">--</span> s</div>
+  <div id="log"></div>
+</div>
+
+<script src="https://unpkg.com/mqtt@5.7.0/dist/mqtt.min.js"></script>
+<script>
+const PREFIXO = "catolicasc-g4/reservatorio";
+// Cluster privado, via WebSocket seguro. A porta 8884 e o caminho
+// /mqtt sao os do WebSocket — a 8883 e so para MQTT nativo (o ESP32).
+const BROKER  = "wss://seu-cluster.s1.eu.hivemq.cloud:8884/mqtt";
+const USUARIO = "esp32";
+const SENHA   = "troque-aqui";
+
+const el = id => document.getElementById(id);
+let ligada = false, segundos = 0, recebeuAlgo = false;
+
+function log(txt) {
+  el("log").textContent = new Date().toLocaleTimeString() + "  " + txt
+    + "\n" + el("log").textContent.split("\n").slice(0, 7).join("\n");
+}
+
+const cliente = mqtt.connect(BROKER, {
+  clientId: "painel-" + Math.random().toString(16).slice(2, 8),
+  username: USUARIO,
+  password: SENHA,
+  clean: true, connectTimeout: 8000, reconnectPeriod: 3000
+});
+
+cliente.on("connect", () => {
+  el("conn").textContent = "conectado ao cluster";
+  el("conn").className = "ok";
+  cliente.subscribe(PREFIXO + "/#", { qos: 1 });
+  el("btn").disabled = false;
+  el("btn").textContent = "LIGAR";
+  log("assinado " + PREFIXO + "/#");
+});
+
+cliente.on("error", e => {
+  el("conn").textContent = "erro de conexao";
+  el("conn").className = "erro";
+  log("erro: " + e.message);
+});
+
+cliente.on("close", () => {
+  el("conn").textContent = "desconectado, tentando de novo...";
+  el("conn").className = "erro";
+});
+
+cliente.on("message", (topico, buf) => {
+  const v = buf.toString();
+  const sufixo = topico.slice(PREFIXO.length + 1);
+  recebeuAlgo = true;
+  segundos = 0;
+
+  if (sufixo === "nivel") {
+    const n = parseInt(v, 10);
+    el("pct").textContent = n + "%";
+    el("fill").style.width = n + "%";
+    el("fill").style.background = n < 15 ? "#c0392b" : (n > 95 ? "#e67e22" : "#378add");
+    el("aviso").textContent = n < 15 ? "Nivel baixo" : "";
+  }
+  else if (sufixo === "distancia")   el("d").textContent = v + " cm";
+  else if (sufixo === "temperatura") el("t").textContent = v + " \u00B0C";
+  else if (sufixo === "alerta/nivel") el("a").textContent = v;
+  else if (sufixo === "status") {
+    el("st").textContent = v.toUpperCase();
+    el("st").style.color = v === "online" ? "#2e7d4f" : "#c0392b";
+  }
+  else if (sufixo === "bomba") {
+    ligada = v !== "DESLIGADA";
+    el("b").textContent = v.replace("LIGADA:AUTO", "LIGADA (auto)")
+                           .replace("LIGADA:MANUAL", "LIGADA (manual)");
+    el("btn").textContent = ligada ? "PARAR" : "LIGAR";
+  }
+  else if (sufixo === "comando/bomba/confirmacao") {
+    log("confirmacao: " + v);
+  }
+});
+
+el("btn").onclick = () => {
+  const cmd = ligada ? "PARAR" : "LIGAR";
+  cliente.publish(PREFIXO + "/comando/bomba", cmd, { qos: 1 });
+  log("enviado: " + cmd);
+};
+
+setInterval(() => {
+  el("s").textContent = recebeuAlgo ? ++segundos : "--";
+}, 1000);
+</script>
+</body>
+</html>

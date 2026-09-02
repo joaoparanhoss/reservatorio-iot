@@ -1,0 +1,15 @@
+# Credenciais reais — versionar só o .env.example
+.env
+
+# Artefatos da compilação local (regeráveis com ./compilar.sh)
+build/
+
+# Cópias locais com as credenciais reais do cluster
+sketch.ino.local
+painel-reservatorio.local.html
+
+# Senha real do Postgres — gere a partir do .env (ver README)
+pgadmin/pgpass
+
+# Enunciados e materiais da disciplina
+*.pdf

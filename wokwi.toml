@@ -1,0 +1,11 @@
+# Configuração para simular no VS Code / Cursor com a extensão do Wokwi.
+# O firmware é compilado localmente pelo arduino-cli, então não passa
+# pela fila de compilação do site.
+#
+# Para recompilar depois de mexer no sketch.ino:
+#   ./compilar.sh
+
+[wokwi]
+version = 1
+firmware = 'build/sketch.ino.merged.bin'
+elf = 'build/sketch.ino.elf'

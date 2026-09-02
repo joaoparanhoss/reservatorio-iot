@@ -1,0 +1,66 @@
+{
+    "version": 1,
+    "author": "Familia 4",
+    "editor": "wokwi",
+    "parts": [
+      { "type": "board-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+      {
+        "type": "wokwi-hc-sr04",
+        "id": "ultra",
+        "top": -190.5,
+        "left": 178.3,
+        "attrs": { "distance": "308" }
+      },
+      { "type": "wokwi-ds18b20", "id": "temp", "top": 94.87, "left": 512.88, "attrs": {} },
+      {
+        "type": "wokwi-lcd1602",
+        "id": "lcd",
+        "top": -320,
+        "left": -196,
+        "attrs": { "pins": "i2c" }
+      },
+      {
+        "type": "wokwi-led",
+        "id": "led",
+        "top": -157.2,
+        "left": 42.2,
+        "attrs": { "color": "red", "label": "Bomba" }
+      },
+      {
+        "type": "wokwi-resistor",
+        "id": "r_led",
+        "top": -50,
+        "left": -160,
+        "attrs": { "value": "220" }
+      },
+      {
+        "type": "wokwi-resistor",
+        "id": "r_pull",
+        "top": 234.35,
+        "left": 48,
+        "attrs": { "value": "4700" }
+      },
+      { "type": "wokwi-buzzer", "id": "bz", "top": -84, "left": 97.8, "attrs": { "volume": "0.1" } }
+    ],
+    "connections": [
+      [ "esp:D5", "ultra:TRIG", "green", [] ],
+      [ "esp:D34", "ultra:ECHO", "green", [] ],
+      [ "esp:VIN", "ultra:VCC", "red", [] ],
+      [ "esp:GND.1", "ultra:GND", "black", [] ],
+      [ "esp:D4", "temp:DQ", "blue", [] ],
+      [ "esp:3V3", "temp:VCC", "red", [] ],
+      [ "esp:GND.2", "temp:GND", "black", [] ],
+      [ "temp:DQ", "r_pull:1", "blue", [] ],
+      [ "temp:VCC", "r_pull:2", "red", [] ],
+      [ "esp:D21", "lcd:SDA", "purple", [] ],
+      [ "esp:D22", "lcd:SCL", "purple", [] ],
+      [ "esp:VIN", "lcd:VCC", "red", [] ],
+      [ "esp:GND.1", "lcd:GND", "black", [] ],
+      [ "esp:D26", "r_led:1", "orange", [] ],
+      [ "r_led:2", "led:A", "orange", [] ],
+      [ "led:C", "esp:GND.2", "black", [] ],
+      [ "esp:D27", "bz:2", "orange", [] ],
+      [ "bz:1", "esp:GND.2", "black", [] ]
+    ],
+    "dependencies": {}
+  }

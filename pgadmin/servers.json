@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Reservatorio",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "reservatorio",
+      "Username": "iot",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass",
+      "Comment": "Banco do medidor de nivel — stack local"
+    }
+  }
+}

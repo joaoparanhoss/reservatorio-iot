@@ -1,0 +1,126 @@
+# ============================================================
+# Stack de captura e persistência da telemetria do reservatório
+#
+#   mosquitto  -> broker local + bridge de saída para o público
+#   postgres   -> armazenamento
+#   collector  -> assina o broker local e grava no banco
+# ============================================================
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: reservatorio-db
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      # Exposto para inspeção com psql a partir do host
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Rodam só na primeira subida (volume vazio), em ordem
+      # alfabética: as tabelas antes das views que dependem delas
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/views.sql:/docker-entrypoint-initdb.d/views.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: reservatorio-mqtt
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      MQTT_REMOTE_HOST: ${MQTT_REMOTE_HOST}
+      MQTT_REMOTE_PORT: ${MQTT_REMOTE_PORT}
+      MQTT_PREFIXO: ${MQTT_PREFIXO}
+      MQTT_BRIDGE_CLIENT_ID: ${MQTT_BRIDGE_CLIENT_ID}
+      MQTT_REMOTE_TLS: ${MQTT_REMOTE_TLS}
+      MQTT_REMOTE_USER: ${MQTT_REMOTE_USER}
+      MQTT_REMOTE_PASS: ${MQTT_REMOTE_PASS}
+    ports:
+      # Exposto para inspeção com cliente MQTT a partir do host
+      - "${MQTT_LOCAL_PORT}:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf.tmpl:ro
+    # O mosquitto.conf não lê variáveis de ambiente, então
+    # trocamos os marcadores __XXX__ pelos valores do .env antes
+    # de subir o broker.
+    command:
+      - sh
+      - -c
+      - |
+        sed -e "s|__BROKER_REMOTO__|$$MQTT_REMOTE_HOST|g" \
+            -e "s|__PORTA_REMOTA__|$$MQTT_REMOTE_PORT|g" \
+            -e "s|__PREFIXO__|$$MQTT_PREFIXO|g" \
+            -e "s|__CLIENT_ID__|$$MQTT_BRIDGE_CLIENT_ID|g" \
+            /mosquitto/config/mosquitto.conf.tmpl > /tmp/mosquitto.conf
+
+        # TLS e credenciais são acrescentados só quando o broker
+        # remoto pede — assim o mesmo template serve tanto o
+        # HiveMQ Cloud quanto o broker público anônimo.
+        if [ "$$MQTT_REMOTE_TLS" = "true" ]; then
+          echo "bridge_cafile /etc/ssl/certs/ca-certificates.crt" >> /tmp/mosquitto.conf
+        fi
+        if [ -n "$$MQTT_REMOTE_USER" ]; then
+          echo "remote_username $$MQTT_REMOTE_USER" >> /tmp/mosquitto.conf
+          echo "remote_password $$MQTT_REMOTE_PASS" >> /tmp/mosquitto.conf
+        fi
+
+        exec mosquitto -c /tmp/mosquitto.conf
+
+  collector:
+    build: ./collector
+    container_name: reservatorio-collector
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      MQTT_PREFIXO: ${MQTT_PREFIXO}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT_INTERNO: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AMOSTRAGEM_INTERVALO_S: ${AMOSTRAGEM_INTERVALO_S}
+      AMOSTRAGEM_DELTA_NIVEL: ${AMOSTRAGEM_DELTA_NIVEL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+  # Interface web para inspecionar o banco. Não faz parte da
+  # captura — é só ferramenta de apoio para a demonstração.
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    container_name: reservatorio-pgadmin
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      # Tira a tela de boas-vindas e o modo master password
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT}:80"
+    volumes:
+      # Servidor já cadastrado, para não preencher host/porta na mão
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./pgadmin/pgpass:/pgpass:ro
+      - pgadmindata:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  pgadmindata:

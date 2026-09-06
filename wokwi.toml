@@ -2,8 +2,9 @@
 # O firmware é compilado localmente pelo arduino-cli, então não passa
 # pela fila de compilação do site.
 #
-# Para recompilar depois de mexer no sketch.ino:
-#   ./compilar.sh
+# Para recompilar depois de mexer no sketch:
+#   ./compilar.sh                    # sketch.ino versionado (broker placeholder)
+#   ./compilar.sh sketch.ino.local   # cópia com as credenciais reais do cluster
 
 [wokwi]
 version = 1

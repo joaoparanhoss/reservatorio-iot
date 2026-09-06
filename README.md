@@ -38,6 +38,13 @@ tópico, nenhum é bidirecional e o eco não acontece.
 ```bash
 cp .env.example .env
 # confira MQTT_REMOTE_* e MQTT_BRIDGE_CLIENT_ID
+
+# o pgAdmin monta este arquivo para entrar no banco sem pedir senha.
+# Ele carrega a senha real, então não é versionado — gere a partir do .env:
+cp pgadmin/pgpass.example pgadmin/pgpass
+sed -i '' "s/TROQUE-PELA-SENHA-DO-ENV/$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2)/" pgadmin/pgpass
+chmod 600 pgadmin/pgpass
+
 docker compose up -d --build
 docker compose logs -f collector
 ```
@@ -361,3 +368,68 @@ variáveis de ambiente sozinho). Depois de mudar o `.env`:
 ```bash
 docker compose up -d --force-recreate mosquitto collector
 ```
+
+## Monitor serial: conexão e reconexão de Wi-Fi
+
+Para uma captura limpa, compile a variante que realmente conecta no broker —
+o `sketch.ino` versionado tem o broker placeholder e enche o log de tentativas
+de MQTT falhando:
+
+```bash
+./compilar.sh sketch.ino.local
+```
+
+Todas as linhas do monitor serial saem carimbadas com `[data hora | uptime]`. A
+data/hora vem de NTP (UTC−3), pedida logo depois do primeiro IP; enquanto o
+relógio não sincronizou, o carimbo mostra `--/-- --:--:--` e só o uptime.
+
+No boot o firmware registra a associação, o que o DHCP entregou e a qualidade do
+sinal. O formato das linhas (os valores abaixo são ilustrativos):
+
+```
+[--/-- --:--:-- | up 00:00:00] ===== Reservatorio IoT -- firmware iniciado =====
+[--/-- --:--:-- | up 00:00:00] Wi-Fi: associando ao SSID "Wokwi-GUEST" e pedindo endereco por DHCP...
+[--/-- --:--:-- | up 00:00:02] Wi-Fi CONECTADO -- SSID=Wokwi-GUEST canal=6 RSSI=-58 dBm (boa)
+[--/-- --:--:-- | up 00:00:02] DHCP entregou: IP=10.13.37.2 mascara=255.255.255.0 gateway=10.13.37.1 DNS=8.8.8.8
+[05/09 15:20:31 | up 00:00:03] NTP: relogio sincronizado -- as linhas acima tinham so o uptime
+```
+
+De 10 em 10 segundos sai um batimento `ATIVO` com IP e RSSI, que serve de prova
+de que a conexão continua de pé entre um evento e outro.
+
+### Comandos digitados no monitor serial
+
+| Comando  | O que faz                                                       |
+|----------|-----------------------------------------------------------------|
+| `QUEDA`  | Derruba o Wi-Fi de propósito para testar a reconexão            |
+| `STATUS` | Imprime IP, RSSI, estado do MQTT, nível e contador de quedas    |
+| `LIGAR`  | Liga a bomba manualmente (mesmo caminho do comando via MQTT)    |
+| `PARAR`  | Para a bomba manualmente                                        |
+
+`QUEDA` existe justamente para a evidência: provoca a perda **sem editar o
+código e sem upload novo**, então tudo que acontece depois é do firmware.
+
+```
+[05/09 15:20:41 | up 00:00:13] ATIVO -- IP=10.13.37.2 RSSI=-58 dBm (boa) | MQTT=conectado | ... | quedas=0
+[05/09 15:20:45 | up 00:00:17] COMANDO "QUEDA": derrubando o Wi-Fi de proposito para testar a reconexao
+[05/09 15:20:45 | up 00:00:17] Wi-Fi PERDIDO (queda #1) -- desconexao provocada pelo comando QUEDA no monitor serial
+[05/09 15:20:46 | up 00:00:18] sem Wi-Fi ha 1.0 s (status=DESCONECTADO) -- o ESP32 esta tentando voltar sozinho
+[05/09 15:20:46 | up 00:00:18] Wi-Fi: tentativa #2 de reconexao (proxima em 1 s se esta falhar)
+[05/09 15:20:48 | up 00:00:20] Wi-Fi CONECTADO -- SSID=Wokwi-GUEST canal=6 RSSI=-57 dBm (boa)
+[05/09 15:20:48 | up 00:00:20] DHCP entregou: IP=10.13.37.2 ...
+[05/09 15:20:48 | up 00:00:20] RECONEXAO AUTOMATICA concluida em 3.1 s apos a queda #1, sem mexer no codigo e sem upload novo
+```
+
+### Onde fica a lógica
+
+`supervisionarWifi()`, no `sketch.ino`, chamada a cada volta do `loop()`. Ela
+roda a cada 250 ms e **não bloqueia**: enquanto a rede não volta, o sensor, o
+LCD e o controle da bomba seguem funcionando. A cada falha a espera até a
+próxima tentativa dobra (1 s → 2 s → 4 s … teto de 30 s), para não inundar o ar
+com pedidos de associação enquanto o ponto de acesso está fora.
+
+O `WiFi.setAutoReconnect(false)` é proposital: a reconexão automática do próprio
+stack do ESP32 ignora desconexões pedidas pelo software (motivo `ASSOC_LEAVE`),
+que é exatamente o caso do comando `QUEDA`. Com um mecanismo só, no firmware, o
+comportamento é o mesmo para queda real e queda provocada — e cada passo fica
+registrado no serial.

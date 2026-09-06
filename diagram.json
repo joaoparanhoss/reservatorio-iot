@@ -1,66 +1,284 @@
 {
-    "version": 1,
-    "author": "Familia 4",
-    "editor": "wokwi",
-    "parts": [
-      { "type": "board-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
-      {
-        "type": "wokwi-hc-sr04",
-        "id": "ultra",
-        "top": -190.5,
-        "left": 178.3,
-        "attrs": { "distance": "308" }
-      },
-      { "type": "wokwi-ds18b20", "id": "temp", "top": 94.87, "left": 512.88, "attrs": {} },
-      {
-        "type": "wokwi-lcd1602",
-        "id": "lcd",
-        "top": -320,
-        "left": -196,
-        "attrs": { "pins": "i2c" }
-      },
-      {
-        "type": "wokwi-led",
-        "id": "led",
-        "top": -157.2,
-        "left": 42.2,
-        "attrs": { "color": "red", "label": "Bomba" }
-      },
-      {
-        "type": "wokwi-resistor",
-        "id": "r_led",
-        "top": -50,
-        "left": -160,
-        "attrs": { "value": "220" }
-      },
-      {
-        "type": "wokwi-resistor",
-        "id": "r_pull",
-        "top": 234.35,
-        "left": 48,
-        "attrs": { "value": "4700" }
-      },
-      { "type": "wokwi-buzzer", "id": "bz", "top": -84, "left": 97.8, "attrs": { "volume": "0.1" } }
+  "version": 1,
+  "author": "Familia 4",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultra",
+      "top": -240,
+      "left": -60,
+      "attrs": {
+        "distance": "308"
+      }
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd",
+      "top": 9.32,
+      "left": 360,
+      "attrs": {
+        "pins": "i2c"
+      }
+    },
+    {
+      "type": "wokwi-ds18b20",
+      "id": "temp",
+      "top": 140.86,
+      "left": 215,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_pull",
+      "top": 184.35,
+      "left": 252,
+      "attrs": {
+        "value": "4700"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led",
+      "top": 56.72,
+      "left": -128.8,
+      "attrs": {
+        "color": "red",
+        "label": "Bomba"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_led",
+      "top": 93.07,
+      "left": -73.8,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz",
+      "top": 24.32,
+      "left": -215,
+      "attrs": {
+        "volume": "0.1"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "legenda",
+      "top": 320,
+      "left": -245,
+      "attrs": {
+        "text": "LIGACOES  (cor do fio -> porta do ESP32)\nHC-SR04    TRIG=D5 verde | ECHO=D34 ciano | VCC=VIN 5V | GND=GND\nLCD 16x2   SDA=D21 magenta | SCL=D22 roxo | VCC=VIN 5V | GND=GND\nDS18B20    DQ=D4 azul | VCC=3V3 | GND=GND | pull-up 4k7 DQ-VCC\nLED bomba  D26 amarelo -> R220 -> anodo | catodo -> GND\nBuzzer     D27 laranja -> pino + | pino - -> GND"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "ultra:VCC",
+      "esp:VIN",
+      "red",
+      [
+        "v7.5",
+        "h-256.3",
+        "v370",
+        "h237",
+        "v-75.7",
+        "h12.8"
+      ]
     ],
-    "connections": [
-      [ "esp:D5", "ultra:TRIG", "green", [] ],
-      [ "esp:D34", "ultra:ECHO", "green", [] ],
-      [ "esp:VIN", "ultra:VCC", "red", [] ],
-      [ "esp:GND.1", "ultra:GND", "black", [] ],
-      [ "esp:D4", "temp:DQ", "blue", [] ],
-      [ "esp:3V3", "temp:VCC", "red", [] ],
-      [ "esp:GND.2", "temp:GND", "black", [] ],
-      [ "temp:DQ", "r_pull:1", "blue", [] ],
-      [ "temp:VCC", "r_pull:2", "red", [] ],
-      [ "esp:D21", "lcd:SDA", "purple", [] ],
-      [ "esp:D22", "lcd:SCL", "purple", [] ],
-      [ "esp:VIN", "lcd:VCC", "red", [] ],
-      [ "esp:GND.1", "lcd:GND", "black", [] ],
-      [ "esp:D26", "r_led:1", "orange", [] ],
-      [ "r_led:2", "led:A", "orange", [] ],
-      [ "led:C", "esp:GND.2", "black", [] ],
-      [ "esp:D27", "bz:2", "orange", [] ],
-      [ "bz:1", "esp:GND.2", "black", [] ]
+    [
+      "ultra:ECHO",
+      "esp:D34",
+      "cyan",
+      [
+        "v19.5",
+        "h-75.3",
+        "v176.7",
+        "h48.8"
+      ]
     ],
-    "dependencies": {}
-  }
+    [
+      "ultra:TRIG",
+      "esp:D5",
+      "green",
+      [
+        "v31.5",
+        "h96.7",
+        "v203.1",
+        "h-16.7"
+      ]
+    ],
+    [
+      "ultra:GND",
+      "esp:GND.1",
+      "black",
+      [
+        "v7.5",
+        "h132.7",
+        "v284.7",
+        "h-72.7"
+      ]
+    ],
+    [
+      "lcd:SDA",
+      "esp:D21",
+      "magenta",
+      [
+        "h-262.7"
+      ]
+    ],
+    [
+      "lcd:SCL",
+      "esp:D22",
+      "purple",
+      [
+        "h-168",
+        "v-38.3",
+        "h-94.7"
+      ]
+    ],
+    [
+      "lcd:GND",
+      "esp:GND.1",
+      "black",
+      [
+        "h-152",
+        "v105.4",
+        "h-110.7"
+      ]
+    ],
+    [
+      "lcd:VCC",
+      "esp:VIN",
+      "red",
+      [
+        "h-34",
+        "v195.2",
+        "h-338",
+        "v-89.7",
+        "h12.8"
+      ]
+    ],
+    [
+      "temp:VCC",
+      "esp:3V3",
+      "red",
+      [
+        "v36",
+        "h-107.7",
+        "v-69.7",
+        "h-30.7"
+      ]
+    ],
+    [
+      "temp:GND",
+      "esp:GND.1",
+      "black",
+      [
+        "v12",
+        "h-74.5",
+        "v-55.3",
+        "h-44.7"
+      ]
+    ],
+    [
+      "temp:DQ",
+      "esp:D4",
+      "blue",
+      [
+        "v24",
+        "h-70.1",
+        "v-96.1",
+        "h-58.7"
+      ]
+    ],
+    [
+      "temp:VCC",
+      "r_pull:1",
+      "red",
+      [
+        "h12.3"
+      ]
+    ],
+    [
+      "temp:DQ",
+      "r_pull:2",
+      "blue",
+      [
+        "v48",
+        "h80.7",
+        "v-48"
+      ]
+    ],
+    [
+      "r_led:2",
+      "esp:D26",
+      "yellow",
+      [
+        "h19.8"
+      ]
+    ],
+    [
+      "r_led:1",
+      "led:A",
+      "yellow",
+      [
+        "h-30"
+      ]
+    ],
+    [
+      "led:C",
+      "esp:GND.2",
+      "black",
+      [
+        "v77.3",
+        "h75.8",
+        "v-29.3",
+        "h42.8"
+      ]
+    ],
+    [
+      "bz:2",
+      "esp:D27",
+      "orange",
+      [
+        "v11.7",
+        "h122",
+        "v-11.7",
+        "h60.8"
+      ]
+    ],
+    [
+      "bz:1",
+      "esp:GND.2",
+      "black",
+      [
+        "v81.7",
+        "h156",
+        "v-43.3",
+        "h36.8"
+      ]
+    ],
+    [
+      "esp:TX0",
+      "$serialMonitor:RX",
+      ""
+    ],
+    [
+      "esp:RX0",
+      "$serialMonitor:TX",
+      ""
+    ]
+  ],
+  "dependencies": {}
+}
